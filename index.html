@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cubex Launcher</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Tahoma,Arial,sans-serif}
+body{background:#000}
+#stage{height:100%;width:100%;display:flex;align-items:center;justify-content:center;text-align:center}
+
+/* ---------- стартовий екран: сторінка завантаження лаунчера (вигадана назва) ---------- */
+#dl{width:min(520px,92vw);padding:38px 28px 30px;background:#1b1f2b;border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);color:#e8ecf5;text-align:center;font-family:"Segoe UI",Arial,sans-serif}
+#dl h2{margin:14px 0 6px;font-size:30px;letter-spacing:.5px}
+#dl p{margin:0 0 4px;color:#9aa4bd;font-size:16px}
+#dlBtn{margin-top:26px;font:600 20px "Segoe UI",Arial,sans-serif;padding:16px 36px;border:0;border-radius:10px;background:linear-gradient(#35d489,#1ea866);color:#04210f;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;box-shadow:0 6px 18px rgba(30,168,102,.35)}
+#dlBtn:hover{filter:brightness(1.08)}
+#dlBtn:active{transform:translateY(1px)}
+#dl small{display:block;margin-top:14px;color:#6f7893;font-size:13px}
+
+/* ---------- око ---------- */
+#eyeStage{color:#ddd;display:flex;flex-direction:column;align-items:center;padding:0 4vw}
+#eyeSvg{width:min(62vw,480px);height:auto;display:block;margin-bottom:26px;transform-origin:50% 50%;animation:eyeOpen .55s ease-out both}
+@keyframes eyeOpen{from{transform:scaleY(.06);opacity:0}to{transform:scaleY(1);opacity:1}}
+#eyeStage h1{font-size:clamp(30px,6vw,72px);font-weight:400;letter-spacing:3px;margin:0}
+
+/* ---------- череп: статичний, блимає тільки фон (~2.8 разу на секунду, нижче межі 3 Гц) ---------- */
+#stage.skull{background:#b00000;animation:flashBg .36s step-end infinite}
+@keyframes flashBg{0%{background:#b00000}50%{background:#fff}}
+#skull{margin:0;font-family:"Segoe UI Symbol","Noto Sans Symbols 2","DejaVu Sans Mono",monospace;white-space:pre;line-height:1;text-align:center;font-size:min(3.15vh,3.1vw);max-width:100vw;max-height:100vh;overflow:hidden;color:#ffe3d6;animation:flashFg .36s step-end infinite}
+@keyframes flashFg{0%{color:#ffe3d6}50%{color:#5a0000}}
+
+/* ---------- фальшивий екран ---------- */
+#lockStage{background:#061c9c;color:#fff;padding:3vh 3vw}
+#lockPanel{width:min(1200px,96vw);background:#a9c5f5;color:#fff;border:4px ridge #dce7ff;box-shadow:0 0 0 2px #173a9a;text-align:left}
+#lockHeader{background:#063b9f;padding:18px 22px;text-align:center;border-bottom:5px solid #e7efff;font-size:clamp(25px,4vw,52px);font-weight:bold}
+#lockBody{padding:clamp(12px,2.2vw,28px);color:#fff;text-shadow:0 1px 1px #5274ae;font-size:clamp(15px,2vw,25px);line-height:1.35}
+#lockBody .lead{font-weight:bold;font-size:1.12em;margin:20px 0 8px}
+#lockControls{margin:20px auto 0;border:2px groove #e5edff;padding:14px;width:min(820px,100%);text-align:center;color:#111;text-shadow:none;background:#b9d0f5}
+.keyrow{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.key{min-width:46px;padding:10px 14px;background:linear-gradient(#fff,#d6d6d6);border:2px outset #eee;color:#111;font-size:22px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.key:active{border-style:inset}
+#codeLine{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;font-size:clamp(20px,2.6vw,32px)}
+#code{font-size:26px;letter-spacing:6px;text-align:center;width:min(320px,65vw);padding:8px;border:2px inset #ddd;background:#fff;color:#111;caret-color:transparent}
+#submit{font-size:19px;padding:10px 18px;background:linear-gradient(#fff,#ddd);border:2px outset #eee;color:#111;cursor:pointer;touch-action:manipulation}
+#footnote{background:#073b9d;padding:12px 18px;font-size:clamp(13px,1.5vw,19px);line-height:1.35;border-top:5px solid #e7efff}
+#result{font-size:clamp(35px,6vw,76px);font-weight:bold;color:#fff;text-shadow:0 0 18px #f00}
+#resultStage{background:#061c9c;color:#fff;display:flex;flex-direction:column;align-items:center;gap:20px;padding:0 4vw}
+
+/* ---------- маленьке червоне віконце помилки ---------- */
+#errPop{position:fixed;left:50%;top:50%;z-index:50;min-width:min(300px,80vw);padding:20px 30px;background:#c40000;color:#fff;border:2px solid #ff7a7a;box-shadow:0 10px 34px rgba(0,0,0,.6);font:600 22px "Segoe UI",Arial,sans-serif;text-align:center;opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(.9);transition:opacity .12s,transform .12s}
+#errPop.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="errPop" role="alert">Wrong password</div>
+<script>
+"use strict";
+const stage=document.getElementById("stage");
+const CODE="1488";
+let timer=null,started=false,done=false;
+
+/* ---------- звук: тільки білий шум на екрані з черепом ---------- */
+let ac=null,master=null,sceneBus=null,sceneSrcs=[];
+
+function audioInit(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    if(!ac){
+      ac=new AC();
+      master=ac.createGain();master.gain.value=1;
+      master.connect(ac.destination);
+    }
+    if(ac.state==="suspended")ac.resume();
+  }catch(e){ac=null}
+}
+function startScene(){
+  endScene(0.05);
+  sceneBus=ac.createGain();sceneBus.gain.value=1;sceneBus.connect(master);sceneSrcs=[];
+  return sceneBus;
+}
+function endScene(fade){
+  if(!ac||!sceneBus)return;
+  const bus=sceneBus,srcs=sceneSrcs;sceneBus=null;sceneSrcs=[];
+  const t=ac.currentTime;
+  bus.gain.cancelScheduledValues(t);
+  bus.gain.setValueAtTime(Math.max(bus.gain.value,0.0001),t);
+  bus.gain.linearRampToValueAtTime(0.0001,t+fade);
+  setTimeout(()=>{srcs.forEach(s=>{try{s.stop()}catch(e){}});try{bus.disconnect()}catch(e){}},fade*1000+100);
+}
+function skullSound(){
+  if(!ac)return;
+  const bus=startScene(),t=ac.currentTime;
+  const n=ac.sampleRate*2,buf=ac.createBuffer(1,n,ac.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  const src=ac.createBufferSource();src.buffer=buf;src.loop=true;
+  const g=ac.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.linearRampToValueAtTime(0.95,t+0.005); // миттєво і на повну (в межах без перевантаження)
+  src.connect(g);g.connect(bus);src.start(t);sceneSrcs.push(src);
+}
+
+/* ---------- звук помилки (схожий на системний сигнал Windows), синтезований ---------- */
+function errTone(freq,start,dur,vol){
+  const o=ac.createOscillator(),o2=ac.createOscillator(),g=ac.createGain(),g2=ac.createGain();
+  o.type="triangle";o2.type="square";
+  o.frequency.setValueAtTime(freq,start);o2.frequency.setValueAtTime(freq,start);
+  g2.gain.value=0.22;
+  g.gain.setValueAtTime(0.0001,start);
+  g.gain.linearRampToValueAtTime(vol,start+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,start+dur);
+  o.connect(g);o2.connect(g2);g2.connect(g);g.connect(master);
+  o.start(start);o2.start(start);
+  o.stop(start+dur+0.05);o2.stop(start+dur+0.05);
+}
+function errorSound(){
+  if(!ac||!master)return;
+  try{
+    if(ac.state==="suspended")ac.resume();
+    const t=ac.currentTime+0.01;
+    errTone(784,t,0.16,0.4);          // перша нота
+    errTone(523.25,t+0.14,0.45,0.4);  // друга, нижча
+  }catch(e){}
+}
+
+/* ---------- червоне віконце «Wrong password» ---------- */
+const pop=document.getElementById("errPop");
+let popTimer=null;
+function showErrorPopup(){
+  pop.classList.remove("show");
+  void pop.offsetWidth; // перезапуск анімації при повторній помилці
+  pop.classList.add("show");
+  clearTimeout(popTimer);
+  popTimer=setTimeout(()=>pop.classList.remove("show"),1600);
+}
+function hidePopup(){clearTimeout(popTimer);pop.classList.remove("show")}
+
+/* ---------- повний екран ---------- */
+function goFullscreen(){
+  const el=document.documentElement;
+  const req=el.requestFullscreen||el.webkitRequestFullscreen;
+  if(!req)return;
+  try{const p=req.call(el);if(p&&p.catch)p.catch(()=>{})}catch(e){}
+}
+function leaveFullscreen(){
+  const ex=document.exitFullscreen||document.webkitExitFullscreen;
+  if(!ex||!(document.fullscreenElement||document.webkitFullscreenElement))return;
+  try{const p=ex.call(document);if(p&&p.catch)p.catch(()=>{})}catch(e){}
+}
+// Esc у повному екрані браузер перехоплює сам і лише виходить з нього — тоді завершуємо демонстрацію
+let wasFs=false;
+function onFsChange(){
+  const fs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  if(wasFs&&!fs&&!done)quit();
+  wasFs=fs;
+}
+document.addEventListener("fullscreenchange",onFsChange);
+document.addEventListener("webkitfullscreenchange",onFsChange);
+
+const gateHTML=`<div id="dl">
+<svg viewBox="0 0 100 100" width="84" height="84" aria-hidden="true">
+<polygon points="50,6 90,28 50,50 10,28" fill="#6ee7a8"/>
+<polygon points="10,28 50,50 50,94 10,72" fill="#2fbf7a"/>
+<polygon points="90,28 50,50 50,94 90,72" fill="#1c8f5a"/>
+</svg>
+<h2>Cubex Launcher</h2>
+<p>Швидкий лаунчер для твоїх ігор</p>
+<p>Версія 2.4.1</p>
+<button id="dlBtn">Завантажити для Windows</button>
+<small>Інсталятор · 48 МБ · Windows 10 / 11</small>
+</div>`;
+
+const eyeHTML=`<div id="eyeStage">
+<svg id="eyeSvg" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<path d="M12 100 C 92 14, 308 14, 388 100 C 308 186, 92 186, 12 100 Z" fill="none" stroke="#d9d9d9" stroke-width="9" stroke-linejoin="round"/>
+<circle cx="200" cy="100" r="52" fill="#000" stroke="#d9d9d9" stroke-width="8"/>
+<circle cx="200" cy="100" r="7" fill="#d9d9d9"/>
+</svg>
+<h1>ВАС ЗАМЕТИЛИ</h1>
+</div>`;
+
+const skull="⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⠉⠉⠁⠄⠄⠄⠄⠈⠉⠉⠛⠿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠁⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠈⠻⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⠁⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⢸⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⡇⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⡇⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣇⠄⠄⠄⢀⣀⣀⣀⠄⠄⠄⠄⠄⢀⣀⣀⣀⡀⠄⠄⢠⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⡄⠄⣼⣿⣿⣿⣿⣷⠄⠄⠄⢀⣿⣿⣿⣿⣿⠄⠄⣼⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⠄⠹⣿⣿⣿⣿⠏⣰⣿⣷⡀⢿⣿⣿⣿⡿⠄⢸⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⠄⠄⠉⠛⠛⠁⢠⣿⣿⣿⣷⠄⠙⠛⠋⠄⠄⢸⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣄⣀⡀⠄⠄⠄⠈⠛⠋⠙⠋⠄⠄⠄⠄⣀⣀⣸⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣀⡄⠄⢀⡀⣀⠄⠄⣤⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣿⣧⣿⣿⣟⣿⢸⣧⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠸⡏⠿⢿⡿⣿⠛⠏⢿⠁⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡀⠄⠈⠁⠄⠄⠄⣠⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⣤⣤⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⡇⠄⠈⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠟⠛⢻⣿⣿⣿⣿\n⣿⣿⣿⣿⠁⠄⠄⠄⠙⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠃⠄⠄⠸⣿⣿⣿⣿\n⣿⣿⣿⣿⣧⣤⣶⣶⣶⣦⣄⠈⠙⠿⣿⣿⣿⡿⠟⠋⢁⣀⣀⣀⠄⢠⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣤⠄⠉⠁⢀⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⢉⣠⣴⣶⣶⣤⣌⡙⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⡿⠟⢋⣡⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⣶⣤⣈⠙⠻⢿⣿⣿⣿⣿\n⠟⠛⠛⠛⠋⣁⣤⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣄⠄⠄⠄⣨\n⣷⡄⠄⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠄⣼⣿\n⣿⣿⣤⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿";
+
+function later(fn,ms){clearTimeout(timer);timer=setTimeout(fn,ms)}
+function setScreen(cls,bg,html){stage.className=cls;stage.style.background=bg;stage.innerHTML=html}
+
+function showGate(){
+  setScreen("","#12141c",gateHTML);
+  document.getElementById("dlBtn").addEventListener("click",begin);
+}
+
+// «Завантажити» -> око (без звуку) -> череп з білим шумом -> фальшивий екран
+function begin(){
+  if(started)return;
+  started=true;
+  goFullscreen(); // повний екран вмикається кліком по кнопці
+  audioInit(); // звук дозволяється саме кліком по кнопці
+  showEye();
+}
+
+function showEye(){
+  setScreen("","#000",eyeHTML);
+  later(showSkull,2300);
+}
+
+function showSkull(){
+  setScreen("skull","#b00000",'<pre id="skull"></pre>');
+  document.getElementById("skull").textContent=skull;
+  skullSound();
+  later(showLocker,4800);
+}
+
+function showLocker(){
+  endScene(0.2);
+  setScreen("","#061c9c",`
+<div id="lockStage">
+ <div id="lockPanel">
+  <div id="lockHeader">Windows заблокирован!</div>
+  <div id="lockBody">
+   <div>Система обнаружила подозрительную активность.</div>
+   <div>Это экран-имитация для розыгрыша. Ваш компьютер и файлы не заблокированы.</div>
+   <div class="lead">Для завершения демонстрации:</div>
+   <div>Введите код кнопками ниже и нажмите «ВХОД В СИСТЕМУ».</div>
+   <div id="lockControls">
+    <div class="keyrow"><span class="key">1</span><span class="key">2</span><span class="key">3</span><span class="key">4</span><span class="key">5</span><span class="key">6</span><span class="key">7</span><span class="key">8</span><span class="key">9</span><span class="key">0</span><span class="key">очистить</span></div>
+    <div id="codeLine"><label for="code">Ваш код:</label><input id="code" type="text" readonly inputmode="none" tabindex="-1" autocomplete="off" maxlength="8"><button id="submit">ВХОД В СИСТЕМУ</button></div>
+   </div>
+  </div>
+  <div id="footnote">Демонстрационный экран. Никакие данные не изменяются и не удаляются. Закройте вкладку или нажмите Esc, чтобы выйти.</div>
+ </div>
+</div>`);
+  const input=document.getElementById("code");
+  // поле тільки для читання: ні клавіатура телефона, ні фізична клавіатура сюди нічого не вводять
+  input.addEventListener("focus",()=>input.blur());
+  const check=()=>{
+    if(input.value===CODE){showResult()}
+    else{input.value="";showErrorPopup();errorSound()}
+  };
+  document.getElementById("submit").addEventListener("click",check);
+  document.querySelectorAll(".key").forEach(k=>k.addEventListener("click",()=>{
+    if(k.textContent==="очистить")input.value="";
+    else if(input.value.length<8)input.value+=k.textContent;
+  }));
+}
+
+function showResult(){
+  done=true;hidePopup();
+  setScreen("","#061c9c",'<div id="resultStage"><div id="result">ТИ БУВ ЗАРЕКРОЛЕНИЙ</div><div style="font-size:24px">Це був лише пранк. Система працює нормально.</div></div>');
+}
+
+function quit(){
+  done=true;
+  started=true;
+  hidePopup();
+  clearTimeout(timer);
+  leaveFullscreen();
+  endScene(0.1);
+  setScreen("","#000",'<div style="color:#fff;font:32px Arial">Демонстрацію завершено.</div>');
+}
+
+document.addEventListener("keydown",e=>{if(e.key==="Escape")quit()});
+window.addEventListener("load",showGate);
+</script>
+</body>
+</html>
